@@ -206,7 +206,7 @@ public class Sudoku implements Serializable {
     }
 
 
-    private List<Point> getEmptyPoints() {
+    public List<Point> getEmptyPoints() {
         List<Point> emptyPoints = new LinkedList<>();
         for (int i = 0; i < board.length; i++) {
             for (int j = 0; j < board[i].length; j++) {

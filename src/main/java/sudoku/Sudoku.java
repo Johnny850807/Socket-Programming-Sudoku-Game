@@ -204,7 +204,10 @@ public class Sudoku implements Serializable {
         }
         return false;
     }
-
+    
+    public List<Point> getPuzzledPoints() {
+        return puzzledPoints;
+    }
 
     public List<Point> getEmptyPoints() {
         List<Point> emptyPoints = new LinkedList<>();

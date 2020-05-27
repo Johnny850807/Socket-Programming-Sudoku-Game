@@ -2,12 +2,15 @@ package p2p;
 
 import sudoku.Inputs;
 import sudoku.Sudoku;
+import sudoku.Sudoku.Point;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author - johnny850807@gmail.com (Waterball)
@@ -72,9 +75,28 @@ public class P2PClient {
     private static Sudoku readSudokuGameStarted() throws IOException {
         Sudoku sudoku = new Sudoku();
         readAndAssertOpCode(OpCodes.GAME_STARTED);
-        for (int i = 0; i < 81; i++) {
-            byte b = (byte) in.read();
-            sudoku.put(i / 9, i % 9, b);
+        byte puzzledPointsSize = (byte) in.read();
+        List<Point> puzzledPoints = new ArrayList<>(puzzledPointsSize);
+        for (int i = 0; i < puzzledPointsSize; i++) {
+            int b = in.read();
+            int row = b >>> 4;
+            assert row >= 0 && row < 9: row + "";
+            int col = b & 0xF;
+            puzzledPoints.add(new Point(row, col));
+        }
+
+        for (int i = 0; i < puzzledPointsSize; i += 2) {
+            int b = in.read();
+            int num1 = b >>> 4;
+            assert num1 >= 1 && num1 <= 9: num1 + "";
+            Point p1 = puzzledPoints.get(i);
+            sudoku.put(p1.row, p1.col, num1);
+            if (i + 1 < puzzledPointsSize) {
+                Point p2 = puzzledPoints.get(i + 1);
+                int num2 = b & 0xF;
+                assert num2 >= 1 && num2 <= 9: num2 + "";
+                sudoku.put(p2.row, p2.col, num2);
+            }
         }
         return sudoku;
     }

@@ -2,6 +2,7 @@ package p2p;
 
 import sudoku.Inputs;
 import sudoku.Sudoku;
+import sudoku.Sudoku.Point;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +10,8 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author - johnny850807@gmail.com (Waterball)
@@ -42,7 +45,7 @@ public class P2PServer {
     private static void play() throws IOException {
         sudoku = new Sudoku();
         myName = Inputs.inputName("Please input your name: ");
-        System.out.println("Hello " + myName  + ".");
+        System.out.println("Hello " + myName + ".");
         System.out.println("Waiting for your opponent submitting his name ...");
         writeMyName();
         opponentName = readOpponentSubmitName();
@@ -116,12 +119,27 @@ public class P2PServer {
 
     private static void writeGameStarted() throws IOException {
         out.write(OpCodes.GAME_STARTED);
-        for (int row = 0; row < 9; row++) {
-            for (int col = 0; col < 9; col++) {
-                out.write(sudoku.get(row, col));
+        List<Point> puzzledPoints = sudoku.getPuzzledPoints();
+        System.out.println(puzzledPoints.stream().map(p -> "(" + p.row + ","+p.col+")").collect(Collectors.joining(", ")));
+        System.out.println(puzzledPoints.stream().map(p -> sudoku.get(p.row, p.col) + "").collect(Collectors.joining(", ")));
+        out.write(puzzledPoints.size());
+        for (int i = 0; i < puzzledPoints.size(); i ++) {
+            Point p = puzzledPoints.get(i);
+            byte b = (byte) (p.row << 4);  // row and col share one byte
+            b |= p.col;
+            out.write(b);
+        }
+        for (int i = 0; i < puzzledPoints.size(); i+=2) {
+            Point p = puzzledPoints.get(i);
+            byte b = (byte) (sudoku.get(p.row, p.col) << 4);  // two numbers share one byte
+            if (i+1 < puzzledPoints.size()) {
+                Point p2 = puzzledPoints.get(i+1);
+                b |= sudoku.get(p2.row, p2.col);
             }
+            out.write(b);
         }
     }
+
 
     private static void readAndAssertOpCode(byte expectedOpCode) throws IOException {
         byte nextOp = (byte) in.read();

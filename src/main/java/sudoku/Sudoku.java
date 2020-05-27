@@ -154,7 +154,7 @@ public class Sudoku implements Serializable {
         return board[row][col] == EMPTY;
     }
 
-    private static class Point {
+    public static class Point {
         public int row, col;
 
         public Point(int row, int col) {

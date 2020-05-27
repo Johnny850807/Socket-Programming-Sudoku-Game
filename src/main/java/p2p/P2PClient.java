@@ -35,11 +35,11 @@ public class P2PClient {
 
     private static void play() throws IOException {
         sudoku = new Sudoku();
-        System.out.println("Waiting for your opponent submitting his name ...");
-        opponentName = readOpponentSubmitName();
         myName = Inputs.inputName("Please input your name: ");
         writeMyName();
         System.out.println("Hello " + myName + ".");
+        System.out.println("Waiting for your opponent submitting his name ...");
+        opponentName = readOpponentSubmitName();
         startGame();
     }
 

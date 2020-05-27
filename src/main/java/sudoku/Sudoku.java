@@ -13,6 +13,7 @@ public class Sudoku implements Serializable {
     private static final long serialVersionUID = 1314520L;
     public final static byte EMPTY = -128;
     private byte[][] board = new byte[9][9];
+    private List<Point> puzzledPoints;
 
     public Sudoku() {
         fillEmptyBoard();
@@ -36,8 +37,8 @@ public class Sudoku implements Serializable {
         do {
             fillEmptyBoard();
             int randomPointsOfPlacement = random.nextInt(25) + 6;
-            List<Point> randomPoints = generateRandomDistinctPoints(randomPointsOfPlacement);
-            canPut = dfsPutRandomly(randomPoints, 0);
+            puzzledPoints = generateRandomDistinctPoints(randomPointsOfPlacement);
+            canPut = dfsPutRandomly(puzzledPoints, 0);
             List<Point> emptyPoints = getEmptyPoints();
             solvable = dfsPut(emptyPoints, 0);  // try dfs over the puzzle
             if (solvable) {
@@ -96,6 +97,9 @@ public class Sudoku implements Serializable {
 
     private void validatePut(int row, int col, int num) throws InvalidException {
         if (num < 1 || num > 9) {
+            throw new InvalidException(row, col, num);
+        } else if (puzzledPoints != null &&
+                puzzledPoints.stream().anyMatch(p -> p.row == row && p.col == col)) {
             throw new InvalidException(row, col, num);
         } else {
             byte oldValue = board[row][col];

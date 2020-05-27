@@ -48,9 +48,9 @@ public class Sudoku implements Serializable {
 
     @SuppressWarnings("ComparatorMethodParameterNotUsed")
     private List<Point> generateRandomDistinctPoints(int numPoints) {
-        Random random = new Random();
-        return IntStream.range(0, 81).boxed()
-                .sorted((n1, n2) -> random.nextInt(3)-1)
+        List<Integer> indices = IntStream.range(0, 81).boxed().collect(Collectors.toList());
+        Collections.shuffle(indices);
+        return indices.stream()
                 .map(index -> new Point(index / 9, index % 9))
                 .limit(numPoints)
                 .collect(Collectors.toList());

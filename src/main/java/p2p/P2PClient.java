@@ -4,9 +4,7 @@ import sudoku.Inputs;
 import sudoku.Sudoku;
 import sudoku.Sudoku.Point;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -15,10 +13,11 @@ import java.util.List;
 /**
  * @author - johnny850807@gmail.com (Waterball)
  */
+@SuppressWarnings("Duplicates")
 public class P2PClient {
     private static Socket socket;
     private static InputStream in;
-    private static OutputStream out;
+    private static BufferedOutputStream out;
     private static Sudoku sudoku;
     private static String myName;
     private static String opponentName;
@@ -30,7 +29,7 @@ public class P2PClient {
     private static void connectToServer() throws IOException {
         socket = new Socket("127.0.0.1", 50000);
         in = socket.getInputStream();
-        out = socket.getOutputStream();
+        out = new BufferedOutputStream(socket.getOutputStream(), 128);
 
         play();
     }
@@ -51,6 +50,7 @@ public class P2PClient {
         byte[] nameBytes = myName.getBytes();
         out.write(nameBytes.length);
         out.write(nameBytes);
+        out.flush();
     }
 
     private static void startGame() throws IOException {
@@ -80,7 +80,6 @@ public class P2PClient {
         for (int i = 0; i < puzzledPointsSize; i++) {
             int b = in.read();
             int row = b >>> 4;
-            assert row >= 0 && row < 9: row + "";
             int col = b & 0xF;
             puzzledPoints.add(new Point(row, col));
         }
@@ -88,13 +87,11 @@ public class P2PClient {
         for (int i = 0; i < puzzledPointsSize; i += 2) {
             int b = in.read();
             int num1 = b >>> 4;
-            assert num1 >= 1 && num1 <= 9: num1 + "";
             Point p1 = puzzledPoints.get(i);
             sudoku.put(p1.row, p1.col, num1);
             if (i + 1 < puzzledPointsSize) {
                 Point p2 = puzzledPoints.get(i + 1);
                 int num2 = b & 0xF;
-                assert num2 >= 1 && num2 <= 9: num2 + "";
                 sudoku.put(p2.row, p2.col, num2);
             }
         }
@@ -134,6 +131,7 @@ public class P2PClient {
         out.write(row);
         out.write(col);
         out.write(num);
+        out.flush();
     }
 
     private static String readOpponentSubmitName() throws IOException {

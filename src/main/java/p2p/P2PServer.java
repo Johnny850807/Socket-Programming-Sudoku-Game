@@ -4,6 +4,7 @@ import sudoku.Inputs;
 import sudoku.Sudoku;
 import sudoku.Sudoku.Point;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,11 +17,12 @@ import java.util.stream.Collectors;
 /**
  * @author - johnny850807@gmail.com (Waterball)
  */
+@SuppressWarnings("Duplicates")
 public class P2PServer {
     private static ServerSocket server;
     private static Socket client;
     private static InputStream in;
-    private static OutputStream out;
+    private static BufferedOutputStream out;
     private static String myName;
     private static String opponentName;
     private static Sudoku sudoku;
@@ -34,7 +36,7 @@ public class P2PServer {
         try {
             client = server.accept();
             in = client.getInputStream();
-            out = client.getOutputStream();
+            out = new BufferedOutputStream(client.getOutputStream());
             play();
         } catch (IOException | IllegalStateException err) {
             client.close();
@@ -57,6 +59,7 @@ public class P2PServer {
         byte[] nameBytes = myName.getBytes();
         out.write(nameBytes.length);
         out.write(nameBytes);
+        out.flush();
     }
 
     private static void startGame() throws IOException {
@@ -120,8 +123,6 @@ public class P2PServer {
     private static void writeGameStarted() throws IOException {
         out.write(OpCodes.GAME_STARTED);
         List<Point> puzzledPoints = sudoku.getPuzzledPoints();
-        System.out.println(puzzledPoints.stream().map(p -> "(" + p.row + ","+p.col+")").collect(Collectors.joining(", ")));
-        System.out.println(puzzledPoints.stream().map(p -> sudoku.get(p.row, p.col) + "").collect(Collectors.joining(", ")));
         out.write(puzzledPoints.size());
         for (int i = 0; i < puzzledPoints.size(); i ++) {
             Point p = puzzledPoints.get(i);
@@ -138,6 +139,7 @@ public class P2PServer {
             }
             out.write(b);
         }
+        out.flush();
     }
 
 
@@ -153,6 +155,7 @@ public class P2PServer {
         out.write(row);
         out.write(col);
         out.write(num);
+        out.flush();
     }
 
 }

@@ -42,7 +42,7 @@ public class P2PServer {
     private static void play() throws IOException {
         sudoku = new Sudoku();
         myName = Inputs.inputName("Please input your name: ");
-        System.out.println("Hello " + myName  + ".");
+        System.out.println("Hello " + myName + ".");
         System.out.println("Waiting for your opponent submitting his name ...");
         writeMyName();
         opponentName = readOpponentSubmitName();
@@ -116,11 +116,23 @@ public class P2PServer {
 
     private static void writeGameStarted() throws IOException {
         out.write(OpCodes.GAME_STARTED);
-        for (int row = 0; row < 9; row++) {
-            for (int col = 0; col < 9; col++) {
-                out.write(sudoku.get(row, col));
-            }
+        for (int i = 0; i < 80; i += 2) {
+            int row = i / 9, col = i % 9;
+            int frontPart = sudoku.get(row, col);
+            frontPart = (frontPart == Sudoku.EMPTY) ? 10 << 4 : frontPart << 4;
+            row = (i + 1) / 9;
+            col = (i + 1) % 9;
+            int behindPart = sudoku.get(row, col);
+            behindPart = (behindPart == Sudoku.EMPTY) ? 10 : behindPart;
+            out.write(frontPart + behindPart);
         }
+        out.write(sudoku.get(8, 8));
+
+//        for (int row = 0; row < 9; row++) {
+//            for (int col = 0; col < 9; col++) {
+//                out.write(sudoku.get(row, col));
+//            }
+//        }
     }
 
     private static void readAndAssertOpCode(byte expectedOpCode) throws IOException {

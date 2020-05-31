@@ -3,9 +3,7 @@ package p2p;
 import sudoku.Inputs;
 import sudoku.Sudoku;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
@@ -15,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 public class P2PClient {
     private static Socket socket;
     private static InputStream in;
-    private static OutputStream out;
+    private static BufferedOutputStream out;
     private static Sudoku sudoku;
     private static String myName;
     private static String opponentName;
@@ -27,11 +25,9 @@ public class P2PClient {
     private static void connectToServer() throws IOException {
         socket = new Socket("127.0.0.1", 50000);
         in = socket.getInputStream();
-        out = socket.getOutputStream();
-
+        out = new BufferedOutputStream(socket.getOutputStream(), 256);
         play();
     }
-
 
     private static void play() throws IOException {
         sudoku = new Sudoku();
@@ -48,6 +44,7 @@ public class P2PClient {
         byte[] nameBytes = myName.getBytes();
         out.write(nameBytes.length);
         out.write(nameBytes);
+        out.flush();
     }
 
     private static void startGame() throws IOException {
@@ -72,10 +69,17 @@ public class P2PClient {
     private static Sudoku readSudokuGameStarted() throws IOException {
         Sudoku sudoku = new Sudoku();
         readAndAssertOpCode(OpCodes.GAME_STARTED);
-        for (int i = 0; i < 81; i++) {
-            byte b = (byte) in.read();
-            sudoku.put(i / 9, i % 9, b);
+        for (int i = 0; i < 80; i += 2) {
+            int combination = in.read();
+            int frontPart = combination >>> 4;
+            frontPart = (frontPart == 10) ? Sudoku.EMPTY : frontPart;
+            int behindPart = combination & 0xf;
+            behindPart = (behindPart == 10) ? Sudoku.EMPTY : behindPart;
+            sudoku.put(i / 9, i % 9, frontPart);
+            sudoku.put((i + 1) / 9, (i + 1) % 9, behindPart);
         }
+        sudoku.put(8, 8, (byte) in.read());
+
         return sudoku;
     }
 
@@ -112,6 +116,7 @@ public class P2PClient {
         out.write(row);
         out.write(col);
         out.write(num);
+        out.flush();
     }
 
     private static String readOpponentSubmitName() throws IOException {

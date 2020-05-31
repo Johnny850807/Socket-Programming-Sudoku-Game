@@ -1,5 +1,8 @@
 package p2p;
 
+import helpers.Countdown;
+import helpers.CountdownAlarm;
+import helpers.ExceptionalRunnable;
 import sudoku.Inputs;
 import sudoku.Sudoku;
 import sudoku.Sudoku.Point;
@@ -12,6 +15,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -19,6 +25,8 @@ import java.util.stream.Collectors;
  */
 @SuppressWarnings("Duplicates")
 public class P2PServer {
+    private static final int HOST_PLAYER_NUMBER = 1;
+    private static final int CLIENT_PLAYER_NUMBER = 2;
     private static ServerSocket server;
     private static Socket client;
     private static InputStream in;
@@ -26,9 +34,11 @@ public class P2PServer {
     private static String myName;
     private static String opponentName;
     private static Sudoku sudoku;
+    private static CountdownAlarm countdownAlarm;
 
     public static void main(String[] args) throws IOException {
         server = new ServerSocket(50000);
+        countdownAlarm = new CountdownAlarm(TimeUnit.MINUTES.toMillis(1));
         acceptClient();
     }
 
@@ -38,7 +48,7 @@ public class P2PServer {
             in = client.getInputStream();
             out = new BufferedOutputStream(client.getOutputStream());
             play();
-        } catch (IOException | IllegalStateException err) {
+        } catch (IOException | RuntimeException err) {
             client.close();
             acceptClient(); // serve the next client
         }
@@ -72,18 +82,46 @@ public class P2PServer {
         do {
             System.out.println(sudoku);
             if (round++ % 2 == 0) {  // server's turn
-                yourTurn();
+                countdownTurn(P2PServer::myTurn, HOST_PLAYER_NUMBER);
             } else { // client's turn
-                clientTurn();
+                countdownTurn(P2PServer::clientTurn, CLIENT_PLAYER_NUMBER);
             }
-        } while (!sudoku.isSolved());
+        } while (!countdownAlarm.timeExpires() && !sudoku.isSolved());
 
         out.write(OpCodes.GAME_OVER);
+        out.flush();
         client.close();
     }
 
+    private static void countdownTurn(ExceptionalRunnable turnRunnable,
+                                      int playerNumber) {
+        Thread turnThread = new Thread(() -> {
+            try {
+                // run the turn asynchronously as a thread and so it can be preempted
+                turnRunnable.run();
+                countdownAlarm.stopCountdown();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
 
-    private static void yourTurn() throws IOException {
+        turnThread.start();
+
+        Countdown countdown = countdownAlarm.countdown(() -> {
+            turnThread.interrupt();  // stop (preempt) the turn
+            try {
+                System.out.printf("Time's out, %s win!\n",
+                        playerNumber == HOST_PLAYER_NUMBER ? opponentName : myName);
+                writeTimeout(playerNumber);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        countdown.await();
+    }
+
+    private static void myTurn() throws IOException {
         do {
             try {
                 int row = Inputs.inputNumInRange("Row index: ", 0, 8);
@@ -99,6 +137,7 @@ public class P2PServer {
             }
         } while (true);
     }
+
 
     private static void clientTurn() throws IOException {
         System.out.println("Waiting for your opponent ...");
@@ -124,17 +163,17 @@ public class P2PServer {
         out.write(OpCodes.GAME_STARTED);
         List<Point> puzzledPoints = sudoku.getPuzzledPoints();
         out.write(puzzledPoints.size());
-        for (int i = 0; i < puzzledPoints.size(); i ++) {
+        for (int i = 0; i < puzzledPoints.size(); i++) {
             Point p = puzzledPoints.get(i);
             byte b = (byte) (p.row << 4);  // row and col share one byte
             b |= p.col;
             out.write(b);
         }
-        for (int i = 0; i < puzzledPoints.size(); i+=2) {
+        for (int i = 0; i < puzzledPoints.size(); i += 2) {
             Point p = puzzledPoints.get(i);
             byte b = (byte) (sudoku.get(p.row, p.col) << 4);  // two numbers share one byte
-            if (i+1 < puzzledPoints.size()) {
-                Point p2 = puzzledPoints.get(i+1);
+            if (i + 1 < puzzledPoints.size()) {
+                Point p2 = puzzledPoints.get(i + 1);
                 b |= sudoku.get(p2.row, p2.col);
             }
             out.write(b);
@@ -142,6 +181,11 @@ public class P2PServer {
         out.flush();
     }
 
+    private static void writeTimeout(int loserPlayerNumber) throws IOException {
+        out.write(OpCodes.TIME_OUT);
+        out.write(loserPlayerNumber);
+        out.flush();
+    }
 
     private static void readAndAssertOpCode(byte expectedOpCode) throws IOException {
         byte nextOp = (byte) in.read();

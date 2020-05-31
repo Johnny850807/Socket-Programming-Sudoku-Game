@@ -15,6 +15,8 @@ import java.util.List;
  */
 @SuppressWarnings("Duplicates")
 public class P2PClient {
+    private static final int HOST_PLAYER_NUMBER = 1;
+    private static final int CLIENT_PLAYER_NUMBER = 2;
     private static Socket socket;
     private static InputStream in;
     private static BufferedOutputStream out;

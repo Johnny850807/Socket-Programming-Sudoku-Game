@@ -72,10 +72,22 @@ public class P2PClient {
     private static Sudoku readSudokuGameStarted() throws IOException {
         Sudoku sudoku = new Sudoku();
         readAndAssertOpCode(OpCodes.GAME_STARTED);
-        for (int i = 0; i < 81; i++) {
-            byte b = (byte) in.read();
-            sudoku.put(i / 9, i % 9, b);
+        for (int i = 0; i < 80; i += 2) {
+            int combination = in.read();
+            int frontPart = combination >>> 4;
+            frontPart = (frontPart == 10) ? Sudoku.EMPTY : frontPart;
+            int behindPart = combination & 0xf;
+            behindPart = (behindPart == 10) ? Sudoku.EMPTY : behindPart;
+            sudoku.put(i / 9, i % 9, frontPart);
+            sudoku.put((i + 1) / 9, (i + 1) % 9, behindPart);
         }
+        sudoku.put(8, 8, (byte) in.read());
+
+//        for (int i = 0; i < 81; i++) {
+//            byte b = (byte) in.read();
+//            sudoku.put(i / 9, i % 9, b);
+//        }
+
         return sudoku;
     }
 
